@@ -1,0 +1,70 @@
+# Ask Aunt Lurlene (zero-dependency Python)
+
+An anonymous Southern advice column built like a modern vintage newspaper.
+Readers submit anonymously; Aunt Lurlene logs in, gets breaking-news popups,
+and publishes answers that **everyone** then sees.
+
+## Why this version deploys cleanly
+
+It uses **only Python's standard library** — no Flask, no gunicorn, no
+psycopg2, **no packages at all**. The build step that kept failing was
+`pip install`. There is now nothing for pip to install, so that step cannot
+fail. The whole web page is also embedded inside `app.py`, so there is no
+separate HTML file for the host to mis-serve either.
+
+## Files (only one matters)
+| File | Purpose |
+|------|---------|
+| `app.py` | The entire app: web server, database, and the embedded page |
+| `requirements.txt` | Intentionally comment-only — tells pip there's nothing to install |
+
+Admin login (change for production): username `angie` / password `password123`
+
+---
+
+## Deploy to Railway
+
+1. Get the files into GitHub. Easiest and most reliable: GitHub Desktop —
+   install it, create/clone your repo, drop `app.py` and `requirements.txt` in,
+   commit, push. Make sure they sit at the TOP LEVEL of the repo, not in a
+   subfolder.
+2. railway.app -> New Project -> Deploy from GitHub repo -> pick your repo.
+   Railway detects Python and runs `python app.py`.
+3. Settings -> Networking -> Generate Domain -> visit the URL. Done.
+
+No database setup is required for it to run.
+
+### If a previous deploy is cached/failing
+Make sure `requirements.txt` no longer contains any `gunicorn`/`web:` line.
+Replace its entire contents with the comment-only version in this package
+(or just delete the file — this app needs no packages).
+
+---
+
+## Run locally
+    python app.py
+    # open http://localhost:3000
+No installs needed.
+
+## How the two key features work
+- Answers update for everyone: published answers are written to the database
+  and served from it; the front page re-fetches every 30 seconds, so every
+  visitor on the live site stays in sync.
+- Only Lurlene gets popups: popups come from /api/admin/new-since, which
+  requires the admin login. Only her logged-in browser polls it.
+
+## About storage (important)
+By default the app stores data in a local SQLite file. On the running site,
+all visitors share that data, so Lurlene's answers appear for everyone
+immediately. Two caveats with default file storage on Railway:
+- A redeploy resets the data (the filesystem is rebuilt).
+- It assumes a single instance (Railway's default).
+
+To make data permanent and survive redeploys, switch to PostgreSQL:
+1. In Railway: New -> Database -> Add PostgreSQL (this sets DATABASE_URL).
+2. In requirements.txt, uncomment the psycopg2-binary==2.9.9 line.
+3. Redeploy. The app detects DATABASE_URL and uses Postgres automatically.
+
+## For real-world use
+Change ADMIN_PASS, and set ADMIN_USER/ADMIN_PASS as Railway variables rather
+than leaving the defaults.
